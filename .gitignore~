@@ -1,9 +1,5 @@
 .vscode
 
-# 忽略 .DS_Store 和 ._.DS_Store
-.DS_Store
-._.DS_Store
-
 # ignored files
 version.py
 
