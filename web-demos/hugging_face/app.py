@@ -13,15 +13,14 @@ import gradio as gr
 
 from torchvision.transforms.functional import normalize
 
-from basicsr.archs.rrdbnet_arch import RRDBNet
 from basicsr.utils import imwrite, img2tensor, tensor2img
 from basicsr.utils.download_util import load_file_from_url
-from basicsr.utils.misc import gpu_is_available, get_device
-from basicsr.utils.realesrgan_utils import RealESRGANer
-from basicsr.utils.registry import ARCH_REGISTRY
-
 from facelib.utils.face_restoration_helper import FaceRestoreHelper
 from facelib.utils.misc import is_gray
+from basicsr.archs.rrdbnet_arch import RRDBNet
+from basicsr.utils.realesrgan_utils import RealESRGANer
+
+from basicsr.utils.registry import ARCH_REGISTRY
 
 
 os.system("pip freeze")
@@ -58,6 +57,9 @@ torch.hub.download_url_to_file(
 torch.hub.download_url_to_file(
     'https://replicate.com/api/models/sczhou/codeformer/files/7cf19c2c-e0cf-4712-9af8-cf5bdbb8d0ee/012.jpg',
     '05.jpg')
+torch.hub.download_url_to_file(
+    'https://raw.githubusercontent.com/sczhou/CodeFormer/master/inputs/cropped_faces/0729.png',
+    '06.png')
 
 def imread(img_path):
     img = cv2.imread(img_path)
@@ -66,8 +68,7 @@ def imread(img_path):
 
 # set enhancer with RealESRGAN
 def set_realesrgan():
-    # half = True if torch.cuda.is_available() else False
-    half = True if gpu_is_available() else False
+    half = True if torch.cuda.is_available() else False
     model = RRDBNet(
         num_in_ch=3,
         num_out_ch=3,
@@ -88,8 +89,7 @@ def set_realesrgan():
     return upsampler
 
 upsampler = set_realesrgan()
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-device = get_device()
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 codeformer_net = ARCH_REGISTRY.get("CodeFormer")(
     dim_embd=512,
     codebook_size=1024,
@@ -98,21 +98,29 @@ codeformer_net = ARCH_REGISTRY.get("CodeFormer")(
     connect_list=["32", "64", "128", "256"],
 ).to(device)
 ckpt_path = "CodeFormer/weights/CodeFormer/codeformer.pth"
-checkpoint = torch.load(ckpt_path)["params_ema"]
+# checkpoint = torch.load(ckpt_path)["params_ema"]
+checkpoint = torch.load(ckpt_path, weights_only=True)["params_ema"]
 codeformer_net.load_state_dict(checkpoint)
 codeformer_net.eval()
 
 os.makedirs('output', exist_ok=True)
 
-def inference(image, background_enhance, face_upsample, upscale, codeformer_fidelity):
+def inference(image, face_align, background_enhance, face_upsample, upscale, codeformer_fidelity):
     """Run a single prediction on the model"""
     try: # global try
         # take the default setting for the demo
-        has_aligned = False
         only_center_face = False
         draw_box = False
         detection_model = "retinaface_resnet50"
+
         print('Inp:', image, background_enhance, face_upsample, upscale, codeformer_fidelity)
+        face_align = face_align if face_align is not None else True
+        background_enhance = background_enhance if background_enhance is not None else True
+        face_upsample = face_upsample if face_upsample is not None else True
+        upscale = upscale if (upscale is not None and upscale > 0) else 2
+
+        has_aligned = not face_align
+        upscale = 1 if has_aligned else upscale
 
         img = cv2.imread(str(image), cv2.IMREAD_COLOR)
         print('\timage size:', img.shape)
@@ -202,24 +210,29 @@ def inference(image, background_enhance, face_upsample, upscale, codeformer_fide
                 restored_img = face_helper.paste_faces_to_input_image(
                     upsample_img=bg_img, draw_box=draw_box
                 )
+        else:
+            restored_img = restored_face
 
         # save restored img
         save_path = f'output/out.png'
         imwrite(restored_img, str(save_path))
 
         restored_img = cv2.cvtColor(restored_img, cv2.COLOR_BGR2RGB)
-        return restored_img, save_path
+        return restored_img
     except Exception as error:
         print('Global exception', error)
         return None, None
 
 
 title = "CodeFormer: Robust Face Restoration and Enhancement Network"
+
 description = r"""<center><img src='https://user-images.githubusercontent.com/14334509/189166076-94bb2cac-4f4e-40fb-a69f-66709e3d98f5.png' alt='CodeFormer logo'></center>
-<b>Official Gradio demo</b> for <a href='https://github.com/sczhou/CodeFormer' target='_blank'><b>Towards Robust Blind Face Restoration with Codebook Lookup Transformer (NeurIPS 2022)</b></a>.<br>
+<br>
+<b>Official Gradio demo</b> for <a href='https://github.com/sczhou/CodeFormer' target='_blank'><b>Towards Robust Blind Face Restoration with Codebook Lookup Transformer (NeurIPS 2022)</b></a><br>
 🔥 CodeFormer is a robust face restoration algorithm for old photos or AI-generated faces.<br>
 🤗 Try CodeFormer for improved stable-diffusion generation!<br>
 """
+
 article = r"""
 If CodeFormer is helpful, please help to ⭐ the <a href='https://github.com/sczhou/CodeFormer' target='_blank'>Github Repo</a>. Thanks! 
 [![GitHub Stars](https://img.shields.io/github/stars/sczhou/CodeFormer?style=social)](https://github.com/sczhou/CodeFormer)
@@ -247,37 +260,54 @@ Redistribution and use for non-commercial purposes should follow this license.
 
 If you have any questions, please feel free to reach me out at <b>shangchenzhou@gmail.com</b>.
 
-<div>
-    🤗 Find Me:
-    <a href="https://twitter.com/ShangchenZhou"><img style="margin-top:0.5em; margin-bottom:0.5em" src="https://img.shields.io/twitter/follow/ShangchenZhou?label=%40ShangchenZhou&style=social" alt="Twitter Follow"></a> 
-    <a href="https://github.com/sczhou"><img style="margin-top:0.5em; margin-bottom:2em" src="https://img.shields.io/github/followers/sczhou?style=social" alt="Github Follow"></a>
-</div>
+🤗 **Find Me:**
+<style type="text/css">
+td {
+    padding-right: 0px !important;
+}
 
-<center><img src='https://visitor-badge-sczhou.glitch.me/badge?page_id=sczhou/CodeFormer' alt='visitors'></center>
+.gradio-container-4-37-2 .prose table, .gradio-container-4-37-2 .prose tr, .gradio-container-4-37-2 .prose td, .gradio-container-4-37-2 .prose th {
+    border: 0px solid #ffffff;
+    border-bottom: 0px solid #ffffff;
+}
+
+</style>
+
+<table>
+<tr>
+    <td><a href="https://github.com/sczhou"><img style="margin:-0.8em 0 2em 0" src="https://img.shields.io/github/followers/sczhou?style=social" alt="Github Follow"></a></td>
+    <td><a href="https://twitter.com/ShangchenZhou"><img style="margin:-0.8em 0 2em 0" src="https://img.shields.io/twitter/follow/ShangchenZhou?label=%40ShangchenZhou&style=social" alt="Twitter Follow"></a></td>
+</tr>
+</table>
+
+<center><img src='https://api.infinitescript.com/badgen/count?name=sczhou/CodeFormer&ltext=Visitors&color=6dc9aa' alt='visitors'></center>
 """
 
 demo = gr.Interface(
     inference, [
-        gr.inputs.Image(type="filepath", label="Input"),
-        gr.inputs.Checkbox(default=True, label="Background_Enhance"),
-        gr.inputs.Checkbox(default=True, label="Face_Upsample"),
-        gr.inputs.Number(default=2, label="Rescaling_Factor (up to 4)"),
+        gr.Image(type="filepath", label="Input"),
+        gr.Checkbox(value=True, label="Pre_Face_Align"),
+        gr.Checkbox(value=True, label="Background_Enhance"),
+        gr.Checkbox(value=True, label="Face_Upsample"),
+        gr.Number(value=2, label="Rescaling_Factor (up to 4)"),
         gr.Slider(0, 1, value=0.5, step=0.01, label='Codeformer_Fidelity (0 for better quality, 1 for better identity)')
     ], [
-        gr.outputs.Image(type="numpy", label="Output"),
-        gr.outputs.File(label="Download the output")
+        gr.Image(type="numpy", label="Output")
     ],
     title=title,
     description=description,
     article=article,       
     examples=[
-        ['01.png', True, True, 2, 0.7],
-        ['02.jpg', True, True, 2, 0.7],
-        ['03.jpg', True, True, 2, 0.7],
-        ['04.jpg', True, True, 2, 0.1],
-        ['05.jpg', True, True, 2, 0.1]
-      ]
+        ['01.png', True, True, True, 2, 0.7],
+        ['02.jpg', True, True, True, 2, 0.7],
+        ['03.jpg', True, True, True, 2, 0.7],
+        ['04.jpg', True, True, True, 2, 0.1],
+        ['05.jpg', True, True, True, 2, 0.1],
+        ['06.png', False, True, True, 1, 0.5]
+      ],
+    concurrency_limit=2
     )
 
-demo.queue(concurrency_count=2)
-demo.launch()
+DEBUG = os.getenv('DEBUG') == '1'
+# demo.launch(debug=DEBUG)
+demo.launch(debug=DEBUG, share=True)
