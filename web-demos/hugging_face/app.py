@@ -234,51 +234,6 @@ description = r"""<center><img src='https://user-images.githubusercontent.com/14
 """
 
 article = r"""
-If CodeFormer is helpful, please help to ⭐ the <a href='https://github.com/sczhou/CodeFormer' target='_blank'>Github Repo</a>. Thanks! 
-[![GitHub Stars](https://img.shields.io/github/stars/sczhou/CodeFormer?style=social)](https://github.com/sczhou/CodeFormer)
-
----
-
-📝 **Citation**
-
-If our work is useful for your research, please consider citing:
-```bibtex
-@inproceedings{zhou2022codeformer,
-    author = {Zhou, Shangchen and Chan, Kelvin C.K. and Li, Chongyi and Loy, Chen Change},
-    title = {Towards Robust Blind Face Restoration with Codebook Lookup TransFormer},
-    booktitle = {NeurIPS},
-    year = {2022}
-}
-```
-
-📋 **License**
-
-This project is licensed under <a rel="license" href="https://github.com/sczhou/CodeFormer/blob/master/LICENSE">S-Lab License 1.0</a>. 
-Redistribution and use for non-commercial purposes should follow this license.
-
-📧 **Contact**
-
-If you have any questions, please feel free to reach me out at <b>shangchenzhou@gmail.com</b>.
-
-🤗 **Find Me:**
-<style type="text/css">
-td {
-    padding-right: 0px !important;
-}
-
-.gradio-container-4-37-2 .prose table, .gradio-container-4-37-2 .prose tr, .gradio-container-4-37-2 .prose td, .gradio-container-4-37-2 .prose th {
-    border: 0px solid #ffffff;
-    border-bottom: 0px solid #ffffff;
-}
-
-</style>
-
-<table>
-<tr>
-    <td><a href="https://github.com/sczhou"><img style="margin:-0.8em 0 2em 0" src="https://img.shields.io/github/followers/sczhou?style=social" alt="Github Follow"></a></td>
-    <td><a href="https://twitter.com/ShangchenZhou"><img style="margin:-0.8em 0 2em 0" src="https://img.shields.io/twitter/follow/ShangchenZhou?label=%40ShangchenZhou&style=social" alt="Twitter Follow"></a></td>
-</tr>
-</table>
 
 <center><img src='https://api.infinitescript.com/badgen/count?name=sczhou/CodeFormer&ltext=Visitors&color=6dc9aa' alt='visitors'></center>
 """
